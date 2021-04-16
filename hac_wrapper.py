@@ -66,7 +66,7 @@ class HAC(HAC_):
                                         state_clip_low, state_clip_high, exploration_action_noise,
                                         exploration_state_noise)
 
-    def learn(self, n_epoch, n_iter, batch_size, save_path):
+    def learn(self, total_timesteps, n_steps, n_iter, batch_size, save_path):
         if save_path is not None:
             if not os.path.isdir(os.path.dirname(save_path)):
                 os.makedirs(dirname(dirname(save_path)))
@@ -74,27 +74,32 @@ class HAC(HAC_):
         else:
             log_f = None
 
-        for i_episode in range(n_epoch):
+        step_count = 0
+        i_episode = 1
+        while step_count <= total_timesteps:
             self.reward = 0
             self.timestep = 0
 
             state = self.env.reset()
-
             # collecting experience in environment
-            last_state, done = self.run_HAC(self.env, self.k_level - 1, state, self.goal_state, is_subgoal_test=False)
-
-            if self.check_goal(last_state, self.goal_state, self.threshold):
-                print("Solved!")
+            last_state, done, _step_count = self.run_HAC(self.env, self.k_level - 1, state, self.goal_state,
+                                                         is_subgoal_test=False)
+            step_count += _step_count
+            if self.verbose > 0:
+                if self.check_goal(last_state, self.goal_state, self.threshold):
+                    print("Solved!")
 
             # updating with collected data
-            self.update(n_iter, batch_size)
+            if step_count > n_steps * i_episode:
+                if self.verbose > 0:
+                    print(f"epoch: {i_episode} - reward: {self.reward}")
 
-            if self.verbose > 0:
-                print(f"epoch: {i_episode} - reward: {self.reward}")
+                self.update(n_iter, batch_size)
+                i_episode += 1
 
-            if log_f:
-                log_f.write(f'{i_episode},{self.reward}\n')
-                log_f.flush()
+                if log_f:
+                    log_f.write(f'{i_episode},{self.reward}\n')
+                    log_f.flush()
 
         if log_f:
             log_f.close()

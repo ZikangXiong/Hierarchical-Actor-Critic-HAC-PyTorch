@@ -54,6 +54,7 @@ class HAC:
 
         # logging updates
         self.goals[i_level] = goal
+        step_count = 0
 
         # H attempts
         for _ in range(self.H):
@@ -76,7 +77,8 @@ class HAC:
                     is_next_subgoal_test = True
 
                 # Pass subgoal to lower level 
-                next_state, done = self.run_HAC(env, i_level - 1, state, action, is_next_subgoal_test)
+                next_state, done, _step_count = self.run_HAC(env, i_level - 1, state, action, is_next_subgoal_test)
+                step_count += _step_count
 
                 # if subgoal was tested but not achieved, add subgoal testing transition
                 if is_next_subgoal_test and not self.check_goal(action, next_state, self.threshold):
@@ -97,6 +99,7 @@ class HAC:
 
                 # take primitive action
                 next_state, rew, done, _ = env.step(action)
+                step_count += 1
 
                 if self.render:
                     if self.k_level == 2:
@@ -137,7 +140,7 @@ class HAC:
             transition[4] = next_state
             self.replay_buffer[i_level].add(tuple(transition))
 
-        return next_state, done
+        return next_state, done, step_count
 
     def update(self, n_iter, batch_size):
         for i in range(self.k_level):
