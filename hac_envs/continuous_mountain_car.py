@@ -74,7 +74,7 @@ class Continuous_MountainCarEnv(gym.Env):
         reward = 0
         if done:
             reward = 100.0
-        reward -= math.pow(action[0], 2) * 0.1
+        reward -= math.pow(np.sum(self.state - np.array([0.6, 0])), 2) * 0.1
 
         self.state = np.array([position, velocity])
         return self.state, reward, done, {}
@@ -167,6 +167,7 @@ class Continuous_MountainCarEnv(gym.Env):
 
             l, r, t, b = -carwidth / 2, carwidth / 2, carheight, 0
             car = rendering.FilledPolygon([(l, b), (l, t), (r, t), (r, b)])
+            self.car = car
             car.add_attr(rendering.Transform(translation=(0, clearance)))
             self.cartrans = rendering.Transform()
             car.add_attr(self.cartrans)
