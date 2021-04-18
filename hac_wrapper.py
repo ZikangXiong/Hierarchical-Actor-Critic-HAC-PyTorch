@@ -6,7 +6,10 @@ from gym.spaces import Box, Discrete
 
 import os
 import pickle
-from os.path import dirname
+
+from stable_baselines3.common.utils import configure_logger
+from stable_baselines3.common import logger
+from auto_rl.learning.utils import get_violation_count
 
 
 class HAC(HAC_):
@@ -66,13 +69,8 @@ class HAC(HAC_):
                                         state_clip_low, state_clip_high, exploration_action_noise,
                                         exploration_state_noise)
 
-    def learn(self, total_timesteps, n_steps, n_iter, batch_size, save_path):
-        if save_path is not None:
-            if not os.path.isdir(os.path.dirname(save_path)):
-                os.makedirs(dirname(dirname(save_path)))
-            log_f = open(f"{dirname(dirname(save_path))}/training_log.csv", "w")
-        else:
-            log_f = None
+    def learn(self, total_timesteps, n_steps, n_iter, batch_size, save_path, tb_log_path=None):
+        configure_logger(verbose=self.verbose, tensorboard_log=tb_log_path, tb_log_name="HAC", reset_num_timesteps=True)
 
         step_count = 0
         i_episode = 1
@@ -85,26 +83,20 @@ class HAC(HAC_):
             last_state, done, _step_count = self.run_HAC(self.env, self.k_level - 1, state, self.goal_state,
                                                          is_subgoal_test=False)
             step_count += _step_count
-            if self.verbose > 0:
-                if self.check_goal(last_state, self.goal_state, self.threshold):
-                    print("Solved!")
 
             # updating with collected data
             if step_count > n_steps * i_episode:
-                if self.verbose > 0:
-                    print(f"epoch: {i_episode} - reward: {self.reward}")
+                vio_num = get_violation_count(self.env)
+                if vio_num is not None:
+                    logger.record("rollout/violation", vio_num)
+                logger.record(f"rollout/ep_rew_mean", self.reward)
 
                 self.update(n_iter, batch_size)
                 i_episode += 1
 
-                if log_f:
-                    log_f.write(f'{i_episode},{self.reward}\n')
-                    log_f.flush()
+                logger.dump(step_count)
 
-        if log_f:
-            log_f.close()
-            self.save(save_path)
-
+        self.save(save_path)
         return self
 
     def predict(self, state: np.ndarray, deterministic=True) -> np.ndarray:
