@@ -55,11 +55,12 @@ class Continuous_MountainCarEnv(gym.Env):
         self.np_random, seed = seeding.np_random(seed)
         return [seed]
 
-    def step(self, action):
+    def step(self, action: np.ndarray):
 
         position = self.state[0]
         velocity = self.state[1]
-        force = min(max(action[0], -1.0), 1.0)
+        action = action.squeeze()
+        force = min(max(action, -1.0), 1.0)
 
         velocity += force * self.power - 0.0025 * math.cos(3 * position)
         if (velocity > self.max_speed): velocity = self.max_speed
